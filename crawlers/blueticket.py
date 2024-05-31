@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from crawlers.parentcrawler import ParentCrawler
+from crawlertype import CrawlerType
 from event.event import Event
 from eventtype import EventType
 from utils.utils import Utils
@@ -13,7 +14,7 @@ TIMEOUT = 120
 
 class Blueticket(ParentCrawler):
 
-    def __init__(self):
+    def __init__(self, event_type):
         super().__init__()
         self.url = 'https://www.blueticket.com.br'
         self.params = {
@@ -21,8 +22,10 @@ class Blueticket(ParentCrawler):
             'uf': 'SC',
             'categoria': '',
         }
+        self.event_type = event_type
         self.cookies = None
-        self.headers = {
+        self.headers_connection = None
+        self.headers_search = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0',
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'en-US,en;q=0.5',
@@ -37,8 +40,7 @@ class Blueticket(ParentCrawler):
             'Sec-Fetch-Mode': 'cors',
             'Sec-Fetch-Site': 'same-site',
         }
-        self.event_type = EventType.SHOWS
-        self.page_soup = None
+        self.search_page_soup = None
         self.event_list = list()
 
     def set_url(self, url):
@@ -53,11 +55,17 @@ class Blueticket(ParentCrawler):
     def get_cookies(self):
         return self.cookies
 
-    def set_page_soup(self, page_soup):
-        self.page_soup = page_soup
+    def set_search_page_soup(self, search_page_soup):
+        self.search_page_soup = search_page_soup
 
-    def get_page_soup(self):
-        return self.page_soup
+    def get_search_page_soup(self):
+        return self.search_page_soup
+
+    def set_event_list(self, event_list):
+        self.event_list = event_list
+
+    def get_event_list(self):
+        return self.event_list
 
     def get_category_event(self):
         if self.event_type == EventType.SHOWS:
@@ -85,19 +93,19 @@ class Blueticket(ParentCrawler):
         json_data = {}
         self.params['categoria'] = self.get_category_event()
         req = requests.post('https://soulapi.blueticket.com.br/api/v2/events/list', params=self.params,
-                            headers=self.headers, cookies=self.cookies, json=json_data)
+                            headers=self.headers_search, cookies=self.cookies, json=json_data)
         if req.status_code == 200:
             self.set_url(req.url)
             soup = BeautifulSoup(req.content, 'lxml')
-            self.set_page_soup(soup)
+            self.set_search_page_soup(soup)
 
     def get_events(self):
-        page = self.get_page_soup()
+        page = self.get_search_page_soup()
         events = json.loads(page.text)
         event_instance = Event("", "", "", "", "", "", "", "")
         for event in events:
             event_instance.set_name(event["nome"])
-            event_instance.set_date(Utils().convert_date_blueticket(event["data_exibicao"]))
+            event_instance.set_date(Utils().get_regular_date(event["data_exibicao"], CrawlerType.BLUETICKET))
             if event['horario_exibicao'] is None:
                 event_instance.set_open_hour(None)
             else:
@@ -106,6 +114,8 @@ class Blueticket(ParentCrawler):
                 else:
                     event_instance.set_open_hour(None)
             event_instance.set_location(event["local"])
-            event_instance.set_event_type(self.event_type.value)
+            event_instance.set_event_type(self.event_type.value.capitalize())
+            event_instance.set_city(self.params['cidade'])
             event_instance.set_url_event(self.url)
             self.event_list.append(event_instance)
+        return self.get_event_list()

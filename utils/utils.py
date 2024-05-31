@@ -49,34 +49,48 @@ class Utils:
         if brand_name == CrawlerType.PENSA_NO_EVENTO:
             partes_url = url.split("/")
             if len(partes_url) >= 4:
-                return partes_url[3]
+                return partes_url[3].capitalize()
             else:
                 return ""
 
-    def convert_date_blueticket(self, data_str: str):
-        data_parts = data_str.split()
-        months = {"Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4, "Maio": 5,
-                  "Junho": 6, "Julho": 7, "Agosto": 8, "Setembro": 9, "Outubro": 10,
-                  "Novembro": 11, "Dezembro": 12}
-        year = datetime.date.today().year
-        if 'a' in data_parts:
-            if 'Data' in data_parts:
-                return None
+    def get_regular_date(self, data_str: str, crawler: CrawlerType):
+        print("Data_STR: " + data_str)
+        formated_date = ""
+        if crawler.value == 'Blueticket':
+            data_parts = data_str.split()
+            months = {"Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4, "Maio": 5,
+                      "Junho": 6, "Julho": 7, "Agosto": 8, "Setembro": 9, "Outubro": 10,
+                      "Novembro": 11, "Dezembro": 12}
+            year = datetime.date.today().year
+            if 'a' in data_parts:
+                if 'Data' in data_parts:
+                    return None
+                else:
+                    first_date_day = data_parts[0]
+                    second_date_day = data_parts[2]
+                    first_date_month = data_parts[4]
+                    month_num = months[first_date_month]
+                    first_date_obj = datetime.datetime(year=int(year), month=month_num, day=int(first_date_day))
+                    second_date_obj = datetime.datetime(year=int(year), month=month_num, day=int(second_date_day))
+                    first_date_formated_date = first_date_obj.strftime("%d/%m/%Y")
+                    second_date_formated_date = second_date_obj.strftime("%d/%m/%Y")
+                    formated_date = first_date_formated_date + ' a ' + second_date_formated_date
             else:
-                first_date_day = data_parts[0]
-                second_date_day = data_parts[2]
-                first_date_month = data_parts[4]
-                month_num = months[first_date_month]
-                first_date_obj = datetime.datetime(year=int(year), month=month_num, day=int(first_date_day))
-                second_date_obj = datetime.datetime(year=int(year), month=month_num, day=int(second_date_day))
-                first_date_formated_date = first_date_obj.strftime("%d/%m/%Y")
-                second_date_formated_date = second_date_obj.strftime("%d/%m/%Y")
-                formated_date = first_date_formated_date + ' a ' + second_date_formated_date
-        else:
-            day = data_parts[1]
-            month = data_parts[3]
-            month_num = months[month]
-            date_obj = datetime.datetime(year=int(year), month=month_num, day=int(day))
+                day = data_parts[1]
+                month = data_parts[3]
+                month_num = months[month]
+                date_obj = datetime.datetime(year=int(year), month=month_num, day=int(day))
+                formated_date = date_obj.strftime("%d/%m/%Y")
+        if crawler.value == 'Sympla':
+            input_date = data_str.split('T')[0].replace("-", "/").split('/')
+            year_s = input_date[0]
+            month_s = input_date[1]
+            day_s = input_date[2]
+            date_obj = datetime.datetime(year=int(year_s), month=int(month_s), day=int(day_s))
             formated_date = date_obj.strftime("%d/%m/%Y")
-
         return formated_date
+
+#
+# u = Utils()
+# date = u.get_regular_date("Start Date: 2024-06-15T23:00:00+00:00", CrawlerType.SYMPLA)
+# print(date)

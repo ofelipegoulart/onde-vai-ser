@@ -13,15 +13,15 @@ TIMEOUT = 120
 
 class PensaNoEvento(ParentCrawler):
 
-    def __init__(self, event_type):
+    def __init__(self, event_type: CrawlerType):
         super().__init__()
-        self.url = 'https://www.pensanoevento.com.br/'
-        self.params = {
+        self.url: str = 'https://www.pensanoevento.com.br/'
+        self.params: dict() = {
             'q': 'florianópolis'
         }
-        self.event_type = event_type
-        self.cookies = None
-        self.headers_connection = {
+        self.event_type: CrawlerType = event_type
+        self.cookies: any = None
+        self.headers_connection: dict() = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
@@ -33,7 +33,7 @@ class PensaNoEvento(ParentCrawler):
             'Sec-Fetch-User': '?1',
             'Priority': 'u=1',
         }
-        self.headers_search = {
+        self.headers_search: dict() = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
@@ -46,63 +46,51 @@ class PensaNoEvento(ParentCrawler):
             'Sec-Fetch-User': '?1',
             'Priority': 'u=1',
         }
-        self.csrf_token = None
-        self.search_page_soup = None
-        self.event_list = list()
+        self.csrf_token: str = None
+        self.search_page_soup: bs4.BeautifulSoup = None
+        self.events_list: list() = list()
 
-    def set_url(self, url):
+    def set_url(self, url: str):
         self.url = url
 
     def get_url(self):
         return self.url
 
-    def set_params(self, params):
+    def set_params(self, params: dict()):
         self.params = params
 
     def get_params(self):
         return self.params
 
-    def set_event_type(self, event_type):
+    def set_event_type(self, event_type: CrawlerType):
         self.event_type = event_type
 
     def get_event_type(self):
         return self.event_type
 
-    def set_cookies(self, cookies):
+    def set_cookies(self, cookies: any):
         self.cookies = cookies
 
     def get_cookies(self):
         return self.cookies
 
-    def set_headers_connection(self, headers_connection):
-        self.headers_connection = headers_connection
-
-    def get_headers_connection(self):
-        return self.headers_connection
-
-    def set_headers_search(self, headers_search):
-        self.headers_search = headers_search
-
-    def get_headers_search(self):
-        return self.headers_search
-
-    def set_csrf_token(self, csrf_token):
+    def set_csrf_token(self, csrf_token: str):
         self.csrf_token = csrf_token
 
     def get_csrf_token(self):
         return self.csrf_token
 
-    def set_search_page_soup(self, search_page_soup):
+    def set_search_page_soup(self, search_page_soup: bs4.BeautifulSoup):
         self.search_page_soup = search_page_soup
 
     def get_search_page_soup(self):
         return self.search_page_soup
 
-    def set_event_list(self, event_list: list):
-        self.event_list = event_list
+    def set_events_list(self, events_list: list):
+        self.events_list = events_list
 
-    def get_event_list(self):
-        return self.event_list
+    def get_events_list(self):
+        return self.events_list
 
     def start_connection(self):
         print(f"[{CrawlerType.PENSA_NO_EVENTO.value}] Iniciando conexão...")
@@ -168,7 +156,6 @@ class PensaNoEvento(ParentCrawler):
 
                         print(event_instance.get_date())
                     if event.find('b').text == "Horário de Abertura:":
-                        # Verificar horário
                         open_hour = Utils().get_open_hour(event, CrawlerType.PENSA_NO_EVENTO)
                         event_instance.set_open_hour(open_hour)
                     if event.find('b').text == "Classificação:":
@@ -187,4 +174,4 @@ class PensaNoEvento(ParentCrawler):
                     continue
         else:
             print(f"[{CrawlerType.PENSA_NO_EVENTO.value}] Busca encerrada.")
-        return event_instance
+        return self.get_events_list()
