@@ -13,3 +13,7 @@ class ParentCrawler:
     @abc.abstractmethod
     def search_page(cls):
         pass
+
+    @abc.abstractmethod
+    def get_events(cls):
+        pass

@@ -3,9 +3,9 @@ import requests
 from bs4 import BeautifulSoup
 
 from crawlers.parentcrawler import ParentCrawler
-from enumerator.cralwertype import CrawlerType
-from enumerator.eventtype import EventType
+from crawlertype import CrawlerType
 from event.event import Event
+from eventtype import EventType
 from utils.utils import Utils
 
 TIMEOUT = 120
@@ -165,9 +165,11 @@ class PensaNoEvento(ParentCrawler):
                     if event.find('b').text == "Data:":
                         event_date = Utils().get_regular_element_pensa_no_evento(event)
                         event_instance.set_date(event_date)
+
+                        print(event_instance.get_date())
                     if event.find('b').text == "Horário de Abertura:":
                         # Verificar horário
-                        open_hour = Utils().get_open_hour_pensa_no_evento(event)
+                        open_hour = Utils().get_open_hour(event, CrawlerType.PENSA_NO_EVENTO)
                         event_instance.set_open_hour(open_hour)
                     if event.find('b').text == "Classificação:":
                         rating_audience = Utils().get_regular_element_pensa_no_evento(event)

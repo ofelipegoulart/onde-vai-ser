@@ -8,3 +8,7 @@ class EventType(Enum):
     GASTRONOMIA = "gastronomia"
     STANDUP = "standup" or "comédia"
     INFANTIL = "infantil"
+    TEATRO = "teatro"
+    CURSO = "cursos e workshops"
+    CONGRESSOS = "congressos"
+    ESPORTIVO = "esportivo"
