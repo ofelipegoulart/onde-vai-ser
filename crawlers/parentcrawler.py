@@ -17,3 +17,7 @@ class ParentCrawler:
     @abc.abstractmethod
     def get_events(cls):
         pass
+
+    @abc.abstractmethod
+    def get_event_info(cls, event: any):
+        pass

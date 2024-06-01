@@ -54,7 +54,6 @@ class Utils:
                 return ""
 
     def get_regular_date(self, data_str: str, crawler: CrawlerType):
-        print("Data_STR: " + data_str)
         formated_date = ""
         if crawler.value == 'Blueticket':
             data_parts = data_str.split()
