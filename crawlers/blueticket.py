@@ -23,7 +23,7 @@ class Blueticket(ParentCrawler):
             'uf': 'SC',
             'categoria': '',
         }
-        self.event_type: CrawlerType = event_type
+        self.event_type: EventType = event_type
         self.cookies: any = None
         self.headers_connection: {} = None
         self.headers_search: {} = {
@@ -69,20 +69,27 @@ class Blueticket(ParentCrawler):
         return self.event_list
 
     def get_category_event(self) -> str:
-        if self.event_type == EventType.SHOWS:
-            return '11'
-        if self.event_type == EventType.TEATRO:
-            return '12'
-        if self.event_type == EventType.INFANTIL:
-            return '14'
-        if self.event_type == EventType.BALADA:
-            return '1'
-        if self.event_type == EventType.CURSO:
-            return '20'
-        if self.event_type == EventType.CONGRESSOS:
-            return '21'
-        if self.event_type == EventType.ESPORTIVO:
-            return '4'
+        match self.event_type.name:
+            case "TODOS":
+                pass
+            case "BALADA":
+                return '1'
+            case "SHOWS":
+                return '11'
+            case "GASTRONOMIA":
+                return '13'
+            case "STANDUP":
+                return '18'
+            case "INFANTIL":
+                return '14'
+            case "TEATRO":
+                return '12'
+            case "CURSO":
+                return '20'
+            case "CONGRESSOS":
+                return '21'
+            case "ESPORTIVO":
+                return '4'
 
     def start_connection(self):
         print(f"[{CrawlerType.BLUETICKET.value}] Iniciando conexão...")
@@ -94,7 +101,8 @@ class Blueticket(ParentCrawler):
     def search_page(self):
         print(f"[{CrawlerType.BLUETICKET.value}] Entrando na página de busca...")
         json_data = {}
-        self.params['categoria'] = self.get_category_event()
+        if self.event_type is not EventType.TODOS:
+            self.params['categoria'] = self.get_category_event()
         req = requests.post('https://soulapi.blueticket.com.br/api/v2/events/list', params=self.params,
                             headers=self.headers_search, cookies=self.cookies, json=json_data)
         if req.status_code == 200:
@@ -103,7 +111,7 @@ class Blueticket(ParentCrawler):
             self.set_search_page_soup(soup)
 
     def get_events(self) -> []:
-        print(f"[{CrawlerType.BLUETICKET.value}] Buscando eventos do tipo {self.event_type.value}...")
+        print(f"[{CrawlerType.BLUETICKET.value}] Buscando eventos do tipo {self.event_type.value.upper()}...")
         page = self.get_search_page_soup()
         events = json.loads(page.text)
         for event in events:
@@ -112,6 +120,7 @@ class Blueticket(ParentCrawler):
         return self.get_event_list()
 
     def get_event_info(self, event: any) -> Event:
+        print(event)
         event_instance = Event("", "", "", "", "", "", "", "")
         event_instance.set_name(event["nome"])
         event_instance.set_date(Utils().get_regular_date(event["data_exibicao"], CrawlerType.BLUETICKET))
@@ -123,7 +132,7 @@ class Blueticket(ParentCrawler):
             else:
                 event_instance.set_open_hour(None)
                 event_instance.set_location(event["local"])
-                event_instance.set_event_type(self.event_type.value.capitalize())
+                event_instance.set_event_type(Utils().get_event_type_by_res(event['categoria']))
                 event_instance.set_city(self.params['cidade'])
                 event_instance.set_url_event(self.url)
         return event_instance

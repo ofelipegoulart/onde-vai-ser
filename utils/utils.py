@@ -89,7 +89,21 @@ class Utils:
             formated_date = date_obj.strftime("%d/%m/%Y")
         return formated_date
 
-#
-# u = Utils()
-# date = u.get_regular_date("Start Date: 2024-06-15T23:00:00+00:00", CrawlerType.SYMPLA)
-# print(date)
+    def get_event_type_by_res(self, category):
+        match category:
+            case "Baladas" | "Shows" | "Gastronomia" | "Stand Up":
+                return category
+            case "Cursos e Workshops":
+                return "Cursos"
+            case "Teatros":
+                return "Teatro"
+            case "Palestras":
+                return "Congresso"
+            case "Esportivos":
+                return "Esportivo"
+            case "Festivais":
+                return "Shows"
+            case "Reveillon":
+                return "Baladas"
+            case None:
+                return None
