@@ -1,14 +1,17 @@
+from eventtype import EventType
+
+
 class Event:
 
     def __init__(self, name, event_type, date, open_hour, rating_audience, location, city, url_event):
-        self.name = name
-        self.event_type = event_type
-        self.date = date
-        self.open_hour = open_hour
-        self.rating_audience = rating_audience
-        self.location = location
-        self.city = city
-        self.url_event = url_event
+        self.name: str = name
+        self.event_type: EventType = event_type
+        self.date: str = date
+        self.open_hour: str = open_hour
+        self.rating_audience: str = rating_audience
+        self.location: str = location
+        self.city: str = city
+        self.url_event: str = url_event
 
     def set_name(self, name):
         self.name = name
