@@ -3,12 +3,12 @@ from enum import Enum
 
 class EventType(Enum):
     TODOS = "todos"
-    BALADA = "baladas" or "balada"
+    BALADA = "baladas"
     SHOWS = "shows"
     GASTRONOMIA = "gastronomia"
-    STANDUP = "standup" or "comédia"
+    STANDUP = "stand up"
     INFANTIL = "infantil"
     TEATRO = "teatro"
-    CURSO = "cursos e workshops"
+    CURSO = "cursos"
     CONGRESSOS = "congressos"
     ESPORTIVO = "esportivo"
