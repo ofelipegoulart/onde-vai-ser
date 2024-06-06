@@ -19,7 +19,7 @@ class PensaNoEvento(ParentCrawler):
         self.params: {} = {
             'q': 'florianópolis'
         }
-        self.event_type: CrawlerType = event_type
+        self.event_type: EventType = event_type
         self.cookies: any = None
         self.headers_connection: {} = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0',
@@ -62,7 +62,7 @@ class PensaNoEvento(ParentCrawler):
     def get_params(self) -> {}:
         return self.params
 
-    def set_event_type(self, event_type: CrawlerType):
+    def set_event_type(self, event_type: EventType):
         self.event_type = event_type
 
     def get_event_type(self) -> []:
@@ -117,7 +117,7 @@ class PensaNoEvento(ParentCrawler):
             self.set_search_page_soup(soup)
 
     def get_events(self) -> []:
-        print(f"[{CrawlerType.PENSA_NO_EVENTO.value}] Buscando eventos do tipo {self.event_type.value}...")
+        print(f"[{CrawlerType.PENSA_NO_EVENTO.value}] Buscando eventos do tipo {self.event_type.value.upper()}...")
         divs_events = self.get_search_page_soup().find_all('h3')
         titles = [title for title in divs_events if len(title.attrs.keys()) == 0 and
                   not isinstance(title, bs4.element.NavigableString)]
@@ -147,15 +147,13 @@ class PensaNoEvento(ParentCrawler):
             for event in tags:
                 if not event.attrs:
                     if 'Cardápio' in soup.text:
-                        event_instance.set_event_type('gastronomia')
+                        event_instance.set_event_type('Gastronomia')
                     if event.find('b').text == "Nome do Evento:":
                         event_name = Utils().get_regular_element_pensa_no_evento(event)
                         event_instance.set_name(event_name)
                     if event.find('b').text == "Data:":
                         event_date = Utils().get_regular_element_pensa_no_evento(event)
                         event_instance.set_date(event_date)
-
-                        print(event_instance.get_date())
                     if event.find('b').text == "Horário de Abertura:":
                         open_hour = Utils().get_open_hour(event, CrawlerType.PENSA_NO_EVENTO)
                         event_instance.set_open_hour(open_hour)
