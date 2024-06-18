@@ -5,9 +5,9 @@ import requests
 from bs4 import BeautifulSoup
 
 from crawlers.parentcrawler import ParentCrawler
-from crawlertype import CrawlerType
+from enumerator.crawlertype import CrawlerType
+from enumerator.eventtype import EventType
 from event.event import Event
-from eventtype import EventType
 from utils.utils import Utils
 
 TIMEOUT = 120
@@ -103,9 +103,18 @@ class Blueticket(ParentCrawler):
         json_data = {}
         if self.event_type is not EventType.TODOS:
             self.params['categoria'] = self.get_category_event()
-        req = requests.post('https://soulapi.blueticket.com.br/api/v2/events/list', params=self.params,
-                            headers=self.headers_search, cookies=self.cookies, json=json_data)
-        if req.status_code == 200:
+            req = requests.post('https://soulapi.blueticket.com.br/api/v2/events/list', params=self.params,
+                                headers=self.headers_search, cookies=self.cookies, json=json_data, timeout=TIMEOUT)
+            if req.status_code == 200:
+                self.set_url(req.url)
+                soup = BeautifulSoup(req.content, 'lxml')
+                self.set_search_page_soup(soup)
+        else:
+            self.params = {
+                'search': 'Florianopolis'
+            }
+            req = requests.post('https://soulapi.blueticket.com.br/api/v2/events/list', params=self.params,
+                                headers=self.headers_search, cookies=self.cookies, json=json_data, timeout=TIMEOUT)
             self.set_url(req.url)
             soup = BeautifulSoup(req.content, 'lxml')
             self.set_search_page_soup(soup)
@@ -120,7 +129,6 @@ class Blueticket(ParentCrawler):
         return self.get_event_list()
 
     def get_event_info(self, event: any) -> Event:
-        print(event)
         event_instance = Event("", "", "", "", "", "", "", "")
         event_instance.set_name(event["nome"])
         event_instance.set_date(Utils().get_regular_date(event["data_exibicao"], CrawlerType.BLUETICKET))
@@ -131,8 +139,9 @@ class Blueticket(ParentCrawler):
                 event_instance.set_open_hour(event['horario_exibicao'].split()[1])
             else:
                 event_instance.set_open_hour(None)
-                event_instance.set_location(event["local"])
-                event_instance.set_event_type(Utils().get_event_type_by_res(event['categoria']))
-                event_instance.set_city(self.params['cidade'])
-                event_instance.set_url_event(self.url)
+        event_instance.set_location(event["local"])
+        event_instance.set_event_type(Utils().get_event_type_by_res(event['categoria']))
+        event_instance.set_city(event['nome_cidade'])
+        event_instance.set_rating_audience(Utils().get_rating_audience_blueticket(event['slug'], event['codigo']))
+        event_instance.set_url_event(self.url)
         return event_instance

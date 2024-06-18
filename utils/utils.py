@@ -1,11 +1,13 @@
 import datetime
+import json
+import re
 
 import requests
 from bs4 import BeautifulSoup
 
 from enumerator.crawlertype import CrawlerType
 
-TIMEOUT = 300
+TIMEOUT = 120
 
 
 class Utils:
@@ -18,14 +20,15 @@ class Utils:
         return parsed_element
 
     def get_open_hour(self, attr: any, brand_name: CrawlerType):
-        hour = ""
-        if brand_name == CrawlerType.PENSA_NO_EVENTO:
-            hour = attr.find('b').parent.contents[3]
-        if brand_name == CrawlerType.BLUETICKET:
-            list_elements = attr.split()
-            if list_elements[0] == 'Abertura:':
-                hour = list_elements[1]
-        return hour
+        match brand_name.value:
+            case "Pensa no Evento":
+                return attr.find('b').parent.contents[3]
+            case "Blueticket":
+                list_elements = attr.split()
+                if list_elements[0] == 'Abertura:':
+                    return list_elements[1]
+            case "Sympla":
+                return attr.split('T')[1][0:5]
 
     def get_location_element_pensa_no_evento(self, attr: any) -> str:
         href_location = attr.find('b').parent.find('a').attrs['href']
@@ -46,7 +49,12 @@ class Utils:
             return city
 
     def get_event_type_by_url(self, url: str, brand_name: CrawlerType):
-        if brand_name == CrawlerType.PENSA_NO_EVENTO:
+        """
+        :param url: url do evento, que tem o tipo de evento dentro da string da url
+        :param brand_name: crawler executado
+        :return: tipo do evento
+        """
+        if brand_name is CrawlerType.PENSA_NO_EVENTO:
             partes_url = url.split("/")
             if len(partes_url) >= 4:
                 return partes_url[3].capitalize()
@@ -54,6 +62,11 @@ class Utils:
                 return ""
 
     def get_regular_date(self, data_str: str, crawler: CrawlerType):
+        """
+        :param data_str: data a ser formatada
+        :param crawler: crawler executado
+        :return: data formatada
+        """
         formated_date = ""
         if crawler.value == 'Blueticket':
             data_parts = data_str.split()
@@ -90,6 +103,10 @@ class Utils:
         return formated_date
 
     def get_event_type_by_res(self, category):
+        """
+        :param category: categoria recebida
+        :return: valor da categoria idêntico ao enumerador
+        """
         match category:
             case "Baladas" | "Shows" | "Gastronomia" | "Stand Up":
                 return category
@@ -107,3 +124,43 @@ class Utils:
                 return "Baladas"
             case None:
                 return None
+
+    def get_rating_audience_blueticket(self, slug: str, id: str):
+        """
+        :param slug: slug para completar a url da requisição
+        :param id: id para completar a url da requisição
+        :param crawler: tipo de crawler, era usado quando esse método era usado para dois crawlers
+        :return: classificação indicativa
+        """
+        req = requests.get(f'https://soulapi.blueticket.com.br/api/pdv/event/detail/{id}', timeout=TIMEOUT)
+        if req.status_code == 200:
+            json_response = json.loads(req.text)
+            age = json_response['classificacao_etaria_obs']
+            if age:
+                soup_age = BeautifulSoup(age, 'lxml')
+                if 'Livre' in soup_age.find('p').text:
+                    return 'Livre'
+                else:
+                    if soup_age.find('span'):
+                        return re.findall(r"\d+", soup_age.find('span').text)[0] + ' anos'
+                    elif 'Crianças' and 'pagam ingresso' in soup_age.text:
+                        return 'Livre'
+                    else:
+                        find_digits_age = re.findall(r"\d+", age)
+                        if len(find_digits_age) != 1:
+                            return None
+                        else:
+                            return find_digits_age[0] + ' anos'
+
+        # def get_rating_audience(self, url: str, id: str, crawler: CrawlerType):
+        # if crawler.value == 'Sympla':
+        #     if 'bileto' in url:
+        #         r = requests.get(f'https://bff-sales-api-cdn.bileto.sympla.com.br/api/v1/events/{id}', headers=headers,
+        #                          timeout=TIMEOUT)
+        #         if r.status_code == 200:
+        #             json_sympla = json.loads(r.text)
+        #             return json_sympla['data']['planner_information']['age_rating']['age_rating_name']
+        #         else:
+        #             TypeError(f"[{CrawlerType.SYMPLA.value}] Não foi possível completar a requisição")
+        #     else:
+        #         TypeError(f"[{CrawlerType.SYMPLA.value}] Não disponibilizado pela API")

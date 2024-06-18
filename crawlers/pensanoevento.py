@@ -3,9 +3,9 @@ import requests
 from bs4 import BeautifulSoup
 
 from crawlers.parentcrawler import ParentCrawler
-from crawlertype import CrawlerType
+from enumerator.crawlertype import CrawlerType
+from enumerator.eventtype import EventType
 from event.event import Event
-from eventtype import EventType
 from utils.utils import Utils
 
 TIMEOUT = 120

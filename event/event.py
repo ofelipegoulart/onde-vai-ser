@@ -1,4 +1,4 @@
-from eventtype import EventType
+from enumerator.eventtype import EventType
 
 
 class Event:

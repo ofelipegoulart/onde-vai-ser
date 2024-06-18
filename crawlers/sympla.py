@@ -5,16 +5,17 @@ import requests
 from bs4 import BeautifulSoup
 
 from crawlers.parentcrawler import ParentCrawler
-from crawlertype import CrawlerType
+from enumerator.crawlertype import CrawlerType
+from enumerator.eventtype import EventType
 from event.event import Event
-from eventtype import EventType
+from utils.utils import Utils
 
 TIMEOUT = 120
 
 
 class Sympla(ParentCrawler):
 
-    def __init__(self, event_type, page_counter):
+    def __init__(self, event_type):
         super().__init__()
         self.url: str = 'https://www.sympla.com.br/api/v1/'
         self.event_type: EventType = event_type
@@ -33,10 +34,10 @@ class Sympla(ParentCrawler):
             'Pragma': 'no-cache',
             'Cache-Control': 'no-cache',
         }
-        self.cookies = None
+        self.cookies: {} = None
         self.json_data = None
         self.search_page_soup = None
-        self.page_counter: int = page_counter
+        self.event_counter: int = 0
         self.event_list = list()
 
     def set_search_page_soup(self, search_page_soup: bs4.BeautifulSoup):
@@ -77,27 +78,25 @@ class Sympla(ParentCrawler):
             case 'TODOS':
                 url = 'https://www.sympla.com.br/api/v1/matrixComponent?uuid=todos-eventos'
             case _:
-                print("Error")
+                TypeError(f"[{CrawlerType.SYMPLA.value}] Ocorreu um erro. Verifique o parâmetro tipo de evento")
         if self.event_type.name != "TODOS":
             req = requests.get(url, headers=self.headers, cookies=self.cookies, timeout=TIMEOUT)
             response = req.json()
             response['component']['service_params']['city'] = 'Florian%C3%B3polis'
             response['component']['service_params']['sort'] = 'location-sort'
             response['component']['service_params']['page'] = self.page_counter
-            self.json_data = {'service': '/v4/mapsearch', 'params': response['component']['service_params']}
+            self.json_data = {'service': '/v4/mapsearch', 'params': response['component']['service_params']['url']}
         else:
-            self.json_data = {"service": "/v4/mapsearch",
-                              "params": {"collections": "", "range": "", "need_pay": "", "include_organizers": 1,
-                                         "only": "name,start_date,end_date,images,event_type,duration_type,location,id,global_score,start_date_formats,end_date_formats,url,company,type,organizer,event",
-                                         "components_limit": "2", "components_page": "1",
-                                         "include_response": "true", "limit": "24",
-                                         "location": "-27.5878,-48.54764", "page": self.page_counter,
-                                         "sort": "location-score", "start_date": "", "end_date": "",
-                                         "state": "SC", "city": ""}}
+            self.json_data = {"service": "/v4/search",
+                              "params": {
+                                  "include_response": "true", "limit": "300",
+                                  "location": "-27.5878,-48.54764",
+                                  "sort": "location-score",
+                                  "state": "SC", "city": "Florianopolis"}}
 
     def search_page(self):
         print(f"[{CrawlerType.SYMPLA.value}] Entrando na página de busca...")
-        req = requests.post(self.url + 'search', json=self.json_data, timeout=TIMEOUT)
+        req = requests.post(self.url + 'search', json=self.json_data, cookies=self.cookies, timeout=TIMEOUT)
         page = BeautifulSoup(req.content, 'lxml')
         self.set_search_page_soup(page)
         self.url = req.url
@@ -105,52 +104,61 @@ class Sympla(ParentCrawler):
     def get_events(self):
         print(f"[{CrawlerType.SYMPLA.value}] Buscando eventos do tipo {self.event_type.value.upper()}...")
         page = self.get_search_page_soup()
-        data = json.loads(page.text)['result']['events']['data']
+        data = json.loads(page.text)['data']
         for evento in data:
             event_instance = Event("", self.event_type, "", "", "", "", "", self.url)
-            if evento['location']['city'] in ['Florianópolis', 'São José']:
+            categories = ''
+            if evento['location']['city'] not in ['Florianópolis', 'São José']:
+                self.event_counter += 1
+                if self.event_counter == 5:
+                    return self.get_event_list()
+            else:
                 event_instance.set_name(evento['name'])
-                event_instance.set_date(evento['start_date'])
-                event_instance.set_open_hour(evento['start_date'])
+                if self.event_type is EventType.TODOS:
+                    self.json_data = {'service': '/v4/search',
+                                      'params': {'q': evento['url']}}
+                    event_type_req = requests.post('https://www.sympla.com.br/api/v1/search', timeout=TIMEOUT,
+                                                   headers=self.headers, cookies=self.cookies, json=self.json_data)
+                    if 'softblock' not in event_type_req.text:
+                        more_info_event = json.loads(event_type_req.text)['data']
+                        element_desired = more_info_event[0]
+                        if 'format_name' in element_desired:
+                            categories = element_desired['format_name']
+                        elif 'category_prim' in element_desired:
+                            categories = element_desired['category_prim']['name']
+                        elif 'theme_name' in element_desired:
+                            categories = element_desired['theme_name']
+                        else:
+                            categories = None
+                            event_instance.set_event_type(categories)
+                        formated_event_type = None
+                        match categories:
+                            case 'Curso | Workshop | Oficinas | Treinamento':
+                                formated_event_type = EventType.CURSO
+                            case 'Congresso | Simpósio | Seminário':
+                                formated_event_type = EventType.CONGRESSOS
+                            case 'Festa':
+                                formated_event_type = EventType.BALADA
+                            case 'Show':
+                                formated_event_type = EventType.SHOWS
+                            case 'Apresentações e espetáculos':
+                                formated_event_type = EventType.TEATRO
+                            case 'Palestra | Conferência | Painel':
+                                formated_event_type = EventType.CONGRESSOS
+                            case 'Meetup | Networking':
+                                formated_event_type = EventType.CONGRESSOS
+                            case 'Festival':
+                                formated_event_type = EventType.SHOWS
+                        if formated_event_type is not None:
+                            event_instance.set_event_type(formated_event_type.value.capitalize())
+                        else:
+                            event_instance.set_event_type(None)
+                    else:
+                        TypeError(f"[{CrawlerType.SYMPLA.value.upper()}] Não foi possível pegar o tipo de evento")
+                event_instance.set_date(Utils().get_regular_date(evento['start_date'], CrawlerType.SYMPLA))
+                event_instance.set_open_hour(Utils().get_open_hour(evento['start_date'], CrawlerType.SYMPLA))
                 event_instance.set_location(evento['location']['name'])
+                event_instance.set_rating_audience(None)
                 event_instance.set_city(evento['location']['city'])
-                if self.event_type is not EventType.TODOS:
-                    event_instance.set_event_type(self.event_type.value.capitalize())
-                else:
-                    event_instance.set_event_type(self.event_type.value.capitalize())
-                    # event_instance.set_event_type(self.get_event_type_on_api(evento['name']))
                 self.event_list.append(event_instance)
         return self.get_event_list()
-
-    # def get_event_type_on_api(self, name):
-    #     for event in SymplaEventType:
-    #         if event.name != "GASTRONOMIA":
-    #             collections = event.value
-    #             json_data = {"service": "/v4/search/term",
-    #                          "params": {"collections": collections, "location": "-27.5878,-48.54764", "page": "1",
-    #                                     "q": unidecode(name)}}
-    #             req = requests.post('https://www.sympla.com.br/api/v1/search', json=json_data, timeout=TIMEOUT)
-    #             response = req.json()['total']
-    #
-    #             if response == 1:
-    #                 return self.get_default_eventtype(event)
-    #
-    #     return self.get_event_type_on_api(name)
-    #
-    # def get_default_eventtype(self, event_type):
-    #     for enum in EventType:
-    #         if enum.name == event_type.name:
-    #             return enum
-    #         else:
-    #             TypeError("Não encontrado")
-
-    def check_if_more_events(self):
-        self.page_counter += 1
-        page = self.get_search_page_soup()
-        total = json.loads(page.text)['result']['events']['total']
-        data = json.loads(page.text)['result']['events']['data']
-        self.page_counter -= 1
-        if total > 1 and 'Florianópolis' in str(data):
-            return True
-        else:
-            return False
